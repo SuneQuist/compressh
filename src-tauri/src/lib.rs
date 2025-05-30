@@ -1,7 +1,8 @@
 use std::{borrow::Cow};
 use std::process::{Command, Stdio};
-use std::path::Path;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
+use tauri::path::{BaseDirectory};
+use std::path::{Path};
 
 // Video ffmpeg -i input.mp4 -vcodec libx264 -crf 23 -preset medium -acodec copy output.mp4\
 // Audio ffmpeg -i input.mp3 -b:a 128k output.mp3
@@ -10,13 +11,16 @@ use tauri::{AppHandle, Emitter};
 // (png, webp) ffmpeg -i input.png -compression_level 100 output.png
 
 #[cfg(target_os = "windows")]
-const FFMPEG_PATH: &str = "bin\\ffmpeg.exe";
-const GS_PATH: &str = "bin\\gs10.05.1\\bin\\gswin64c.exe";
 use std::os::windows::process::CommandExt;
 
 #[tauri::command]
 fn run_ffmpeg(app: AppHandle, path: String) {
     std::thread::spawn(move || {
+        let ffmpeg_path = app
+        .path()
+        .resolve("bin/ffmpeg.exe", BaseDirectory::Resource)
+        .expect("Failed to resolve ffmpeg.exe path");
+
         let (extension, input, output) = get_path(&path);
 
         let mut args: Vec<String> = Vec::new(); 
@@ -36,7 +40,7 @@ fn run_ffmpeg(app: AppHandle, path: String) {
 
         args.push(output);
 
-        let mut cmd = Command::new(FFMPEG_PATH);
+        let mut cmd = Command::new(ffmpeg_path);
 
         cmd
         .args(&args)
@@ -61,6 +65,11 @@ fn run_ffmpeg(app: AppHandle, path: String) {
 #[tauri::command]
 fn run_gs(app: AppHandle, path: String, cmd: String) {
     std::thread::spawn(move || {
+        let gs_path = app
+        .path()
+        .resolve("bin/gs10.05.1/bin/gswin64c.exe", BaseDirectory::Resource)
+        .expect("Failed to resolve gs.exe path");
+
         let (_extension, input, output) = get_path(&path);
 
         let default_command = "-sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -dDownsampleColorImages=true -dColorImageResolution=180 -dColorImageDownSampleType=/Bicubic -dNOPAUSE -dQUEIT -dBATCH";
@@ -73,7 +82,7 @@ fn run_gs(app: AppHandle, path: String, cmd: String) {
         args.push(format!("-sOutputFile={}", output));
         args.push(input);
 
-        let mut cmd = Command::new(GS_PATH);
+        let mut cmd = Command::new(gs_path);
 
         cmd
         .args(&args)
