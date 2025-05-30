@@ -1,5 +1,5 @@
 use std::{borrow::Cow};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::path::Path;
 use tauri::{AppHandle, Emitter};
 
@@ -12,6 +12,7 @@ use tauri::{AppHandle, Emitter};
 #[cfg(target_os = "windows")]
 const FFMPEG_PATH: &str = "bin\\ffmpeg.exe";
 const GS_PATH: &str = "bin\\gs10.05.1\\bin\\gswin64c.exe";
+use std::os::windows::process::CommandExt;
 
 #[tauri::command]
 fn run_ffmpeg(app: AppHandle, path: String) {
@@ -35,9 +36,20 @@ fn run_ffmpeg(app: AppHandle, path: String) {
 
         args.push(output);
 
-        let result = Command::new(FFMPEG_PATH)
+        let mut cmd = Command::new(FFMPEG_PATH);
+
+        cmd
         .args(&args)
-        .output();
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+        #[cfg(target_os = "windows")]
+        {
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+
+        let result = cmd.output();
 
         match result {
             Ok(_) => { app.emit("process-done", "done").unwrap(); },
@@ -61,9 +73,20 @@ fn run_gs(app: AppHandle, path: String, cmd: String) {
         args.push(format!("-sOutputFile={}", output));
         args.push(input);
 
-        let result = Command::new(GS_PATH)
+        let mut cmd = Command::new(GS_PATH);
+
+        cmd
         .args(&args)
-        .output();
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+        #[cfg(target_os = "windows")]
+        {
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+
+        let result = cmd.output();
 
         match result {
             Ok(_) => { app.emit("process-done", "done").unwrap(); },
